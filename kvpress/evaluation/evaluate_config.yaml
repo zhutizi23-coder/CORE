@@ -1,0 +1,47 @@
+# SPDX-FileCopyrightText: Copyright (c) 1993-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Relative paths below are resolved from the working directory.
+# Run from the CORE repository root: bash kvpress/evaluation/evaluate.sh
+output_dir: "./results"
+
+model: "./model"
+paper_protocol: true
+longbench_task: null
+dataset: "ruler"                                  # local-only RULER loading
+data_dir: "./RULER/4096"                           # local 4096 directory containing the RULER parquet
+
+press_name: "core_full"                            # full CORE: indexer + memory, prefill + decode
+compression_ratio: 0.9                            # Compression ratio for the press (0.0 to 1.0)
+key_channel_compression_ratio: null               # For ThinKPress and ComposedPress (0.0 to 1.0)
+threshold: null                                   # For DMSPress
+core_indexer_checkpoint_path: "./indexer/core_indexer.pt"
+core_indexer_compression_ratio: null              # Legacy override; normally change compression_ratio only
+core_enable_memory: true                          # Fail loudly unless trained memory is loaded and active
+core_memory_gate_override: null                   # null = learned gate; numeric values are diagnostics only
+core_span_block_size: null  # Read the tokenwise policy from the checkpoint
+core_span_pool_beta: null
+core_span_selection_mode: null
+core_protect_query_tokens: null
+core_identifier_lexical_weight: 0.0              # Disabled for the primary learned CORE result
+core_identifier_min_match_tokens: 20             # Reject short/common lexical overlaps
+core_identifier_context_skip: 64                 # Ignore repeated prompt boilerplate
+core_identifier_span_size: 32                    # Preserve the full identifier/value record
+compression_interval: 128                         # Decode steps between CORE recompression
+target_size: null  # Match each sequence's retained prefill budget
+hidden_states_buffer_size: 128                    # Recent decode queries used for scoring
+
+fraction: 1.0                                     # Fraction of dataset to evaluate (0.0 to 1.0), for quick testing
+max_new_tokens: null                              # Maximum new tokens to generate (null = use dataset default)
+max_context_length: null                          # Maximum context length (null = use model maximum)
+query_aware: false                                # Whether to include question in context for query-aware compression
+needle_depth: null                                # Depth (int or list of ints) percentage of the needle in the haystack (0 to 100), only for needle_in_haystack dataset
+
+device: null  # Automatically select device; CLI may override
+fp8: false    # Whether to use FP8 quantization (FineGrainedFP8Config() from transformers)
+
+# You can add any model kwargs here.
+model_kwargs:
+  attn_implementation: null  
+  dtype: "auto"
+  

@@ -1,0 +1,19 @@
+# Install the bundled KVPress package and its evaluation dependencies.
+-e ./kvpress[eval]
+
+# Versions from the documented installation example.
+# Install the CUDA-enabled PyTorch build first, as shown in README.md.
+torch==2.4.1
+transformers==5.2.0
+triton==3.0.0
+numpy==2.2.6
+pandas==2.3.3
+datasets==5.0.0
+accelerate==1.14.0
+
+# Additional runtime dependencies and FlashAttention build prerequisites.
+PyYAML==6.0.3
+einops==0.8.2
+packaging
+ninja
+psutil

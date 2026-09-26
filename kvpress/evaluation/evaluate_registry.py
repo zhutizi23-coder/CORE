@@ -1,0 +1,153 @@
+# SPDX-FileCopyrightText: Copyright (c) 1993-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+from pathlib import Path
+import sys
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from benchmarks.aime25.calculate_metrics import calculate_metrics as aime25_scorer
+from benchmarks.infinite_bench.calculate_metrics import calculate_metrics as infinite_bench_scorer
+from benchmarks.longbench.calculate_metrics import calculate_metrics as longbench_scorer
+from benchmarks.longbench.calculate_metrics import calculate_metrics_e as longbench_scorer_e
+from benchmarks.longbenchv2.calculate_metrics import calculate_metrics as longbenchv2_scorer
+from benchmarks.loogle.calculate_metrics import calculate_metrics as loogle_scorer
+from benchmarks.math500.calculate_metrics import calculate_metrics as math500_scorer
+from benchmarks.needle_in_haystack.calculate_metrics import calculate_metrics as needle_in_haystack_scorer
+from benchmarks.ruler.calculate_metrics import calculate_metrics as ruler_scorer
+from benchmarks.zero_scrolls.calculate_metrics import calculate_metrics as zero_scrolls_scorer
+
+from kvpress import (
+    AdaKVPress,
+    BlockPress,
+    CAMPress,
+    ChunkKVPress,
+    CompactorPress,
+    ComposedPress,
+    CriticalAdaKVPress,
+    CriticalKVPress,
+    CURPress,
+    DecodingPress,
+    DMSPress,
+    DuoAttentionPress,
+    ExpectedAttentionPress,
+    FastKVzipPress,
+    FinchPress,
+    KeyDiffPress,
+    KnormPress,
+    KVComposePress,
+    KVzapPress,
+    KVzipPress,
+    LagKVPress,
+    MergingPress,
+    ObservedAttentionPress,
+    PyramidKVPress,
+    QFilterPress,
+    RandomPress,
+    SnapKVPress,
+    StreamingLLMPress,
+    ThinKPress,
+    TOVAPress,
+)
+from core.kvpress_adapter import (
+    load_core_indexer_press,
+    load_core_memory_press,
+    load_core_prefill_decoding_press,
+)
+
+# These dictionaries define the available datasets, scorers, and KVPress methods for evaluation.
+DATASET_REGISTRY = {
+    "loogle": "simonjegou/loogle",
+    "ruler": "simonjegou/ruler",
+    "zero_scrolls": "simonjegou/zero_scrolls",
+    "infinitebench": "MaxJeblick/InfiniteBench",
+    "longbench": "Xnhyacinth/LongBench",
+    "longbench-e": "Xnhyacinth/LongBench",
+    "longbench-v2": "simonjegou/LongBench-v2",
+    "needle_in_haystack": "alessiodevoto/paul_graham_essays",
+    # Datasets used to be used for decoding compression
+    "aime25": "alessiodevoto/aime25",
+    "math500": "alessiodevoto/math500",
+}
+
+SCORER_REGISTRY = {
+    "loogle": loogle_scorer,
+    "ruler": ruler_scorer,
+    "zero_scrolls": zero_scrolls_scorer,
+    "infinitebench": infinite_bench_scorer,
+    "longbench": longbench_scorer,
+    "longbench-e": longbench_scorer_e,
+    "longbench-v2": longbenchv2_scorer,
+    "needle_in_haystack": needle_in_haystack_scorer,
+    "aime25": aime25_scorer,
+    "math500": math500_scorer,
+}
+
+
+PRESS_REGISTRY = {
+    "adakv_snapkv": AdaKVPress(SnapKVPress()),
+    "block_keydiff": BlockPress(press=KeyDiffPress(), block_size=128),
+    "chunkkv": ChunkKVPress(press=SnapKVPress(), chunk_length=20),
+    "critical_adakv_expected_attention": CriticalAdaKVPress(ExpectedAttentionPress(use_vnorm=False)),
+    "critical_adakv_snapkv": CriticalAdaKVPress(SnapKVPress()),
+    "critical_expected_attention": CriticalKVPress(ExpectedAttentionPress(use_vnorm=False)),
+    "critical_snapkv": CriticalKVPress(SnapKVPress()),
+    "cur": CURPress(),
+    "duo_attention": DuoAttentionPress(),
+    "duo_attention_on_the_fly": DuoAttentionPress(on_the_fly_scoring=True),
+    "expected_attention": AdaKVPress(ExpectedAttentionPress(epsilon=1e-2)),
+    "expected_attention_uniform": ExpectedAttentionPress(epsilon=1e-2),
+    "fastkvzip": FastKVzipPress(),
+    "finch": FinchPress(),
+    "keydiff": KeyDiffPress(),
+    "kvcompose": KVComposePress(),
+    "kvcompose_unstructured": KVComposePress(structured=False),
+    "kvzip": KVzipPress(),
+    "kvzip_plus": KVzipPress(kvzip_plus_normalization=True),
+    "kvzap_linear": DMSPress(press=KVzapPress(model_type="linear")),
+    "kvzap_mlp": DMSPress(press=KVzapPress(model_type="mlp")),
+    "kvzap_mlp_head": KVzapPress(model_type="mlp"),
+    "kvzap_mlp_layer": AdaKVPress(KVzapPress(model_type="mlp")),
+    "lagkv": LagKVPress(),
+    "knorm": KnormPress(),
+    "observed_attention": ObservedAttentionPress(),
+    "pyramidkv": PyramidKVPress(),
+    "qfilter": QFilterPress(),
+    "random": RandomPress(),
+    "snap_think": ComposedPress([SnapKVPress(), ThinKPress()]),
+    "snapkv": SnapKVPress(),
+    "streaming_llm": StreamingLLMPress(),
+    "think": ThinKPress(),
+    "tova": TOVAPress(),
+    "compactor": CompactorPress(),
+    "adakv_compactor": AdaKVPress(CompactorPress()),
+    "no_press": None,
+    "cam_streaming_llm": CAMPress(base_press=StreamingLLMPress()),
+    "cam_knorm": CAMPress(base_press=KnormPress()),
+    "cam_adakv_snapkv": CAMPress(base_press=AdaKVPress(SnapKVPress())),
+    "cam_tova": CAMPress(base_press=TOVAPress()),
+    "decoding_knorm": DecodingPress(base_press=KnormPress()),
+    "decoding_streaming_llm": DecodingPress(base_press=StreamingLLMPress()),
+    "decoding_tova": DecodingPress(base_press=TOVAPress()),
+    "decoding_qfilter": DecodingPress(base_press=QFilterPress()),
+    "decoding_adakv_expected_attention_e2": DecodingPress(base_press=AdaKVPress(ExpectedAttentionPress(epsilon=1e-2))),
+    "decoding_adakv_snapkv": DecodingPress(base_press=AdaKVPress(SnapKVPress())),
+    "decoding_keydiff": DecodingPress(base_press=KeyDiffPress()),
+    # MergingPress: merge-on-evict during prefill (values-only merge preserves RoPE keys)
+    "merging_knorm": MergingPress(KnormPress()),
+    "merging_snapkv": MergingPress(SnapKVPress()),
+    "merging_expected_attention": MergingPress(ExpectedAttentionPress(epsilon=1e-2)),
+    "merging_kvzap_mlp": MergingPress(KVzapPress(model_type="mlp")),
+    # core_indexer: trained CORE indexer, hard Top-B eviction (baseline). Same
+    # scoring as core_memory but evicted tokens are dropped (no M_t/b_t write),
+    # so deep/out-of-Top-B information is permanently lost (e.g. niah_single_3).
+    "core_indexer": load_core_indexer_press,
+    # CORE scoring with evicted-token memory writing and learned gated readout.
+    # Memory writing leaves the Top-B retention count unchanged.
+    "core_memory": load_core_memory_press,
+    # Prefill Top-B and memory writing, followed by decode readout
+    # and periodic recompression using the same M/b/Z state.
+    "core_full": load_core_prefill_decoding_press,
+}
